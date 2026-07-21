@@ -10,6 +10,7 @@
   var refFrom = (params.get("ref") || "").trim();
   var roles = ["member", "friend"];
   var memberShareUrl = ""; // 會員產生的專屬邀請連結
+  var state = {};
 
   $("#eyebrow").textContent = CFG.brandEyebrow || $("#eyebrow").textContent;
 
@@ -21,8 +22,6 @@
     $("#doneText").textContent = S.outro || "感謝您的填答。";
     renderSurvey(role);
   }
-
-  var state = {};
 
   /* ---------- 版本選擇（預覽） ---------- */
   function renderPicker() {
