@@ -126,12 +126,12 @@ body{
 
 /* 忠誠意圖 Juster 0–10 */
 .juster__ends{display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); margin-bottom:9px}
-.juster__scale{display:grid; grid-template-columns:repeat(11,1fr); gap:6px}
-.jbtn{appearance:none; cursor:pointer; aspect-ratio:1/1; min-height:34px; border:1.5px solid var(--line-strong); border-radius:9px;
+.juster__scale{display:grid; grid-template-columns:repeat(11,minmax(0,1fr)); gap:5px}
+.jbtn{appearance:none; cursor:pointer; min-width:0; height:40px; border:1.5px solid var(--line-strong); border-radius:9px;
   background:transparent; color:var(--ink); font:inherit; font-family:"Roboto Mono",monospace; font-weight:700; font-size:13.5px; transition:.12s}
 .jbtn:hover{border-color:var(--sel-line)}
 .jbtn.is-on{background:var(--pitch-700); border-color:var(--pitch-700); color:#fff}
-@media (max-width:400px){ .jbtn{min-height:29px; font-size:12px; border-radius:7px} .juster__scale{gap:4px} }
+@media (max-width:420px){ .jbtn{height:34px; font-size:12px; border-radius:7px} .juster__scale{gap:4px} }
 
 /* 取捨量化 Conjoint */
 .cj__hint,.rank__hint{font-size:13px; color:var(--ink-soft); margin:0 0 12px}
