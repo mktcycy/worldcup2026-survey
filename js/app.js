@@ -1,4 +1,4 @@
-/* 2026 世界盃 會員問卷 — 前端邏輯（專業深度版） */
+/* 2026 世界盃 會員問卷 — 前端邏輯（雙版本・成長引擎版） */
 (function () {
   "use strict";
   var CFG = window.APP_CONFIG || {};
@@ -6,59 +6,66 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
 
   var params = new URLSearchParams(location.search);
-  var seg = (params.get("seg") || "").toUpperCase().trim();
-  var validSegs = Object.keys(SURVEY.segments || {});
+  var role = (params.get("role") || "").toLowerCase().trim();
+  var refFrom = (params.get("ref") || "").trim();
+  var roles = ["member", "friend"];
+  var memberShareUrl = ""; // 會員產生的專屬邀請連結
 
   $("#eyebrow").textContent = CFG.brandEyebrow || $("#eyebrow").textContent;
-  $("#title").textContent = CFG.brandTitle || $("#title").textContent;
-  $("#intro").textContent = SURVEY.intro || "";
-  $("#doneText").textContent = SURVEY.outro || "感謝您的填答。";
 
-  var state = {}; // qid -> answer
+  if (roles.indexOf(role) === -1) { renderPicker(); }
+  else {
+    var S = SURVEY[role];
+    $("#title").textContent = role === "member" ? "了解您，也邀您一起玩" : "2 分鐘體育小問卷";
+    $("#intro").textContent = S.intro || "";
+    $("#doneText").textContent = S.outro || "感謝您的填答。";
+    renderSurvey(role);
+  }
 
-  if (!seg || validSegs.indexOf(seg) === -1) renderPicker();
-  else renderSurvey(seg);
+  var state = {};
 
-  /* ---------- 預覽選擇器 ---------- */
+  /* ---------- 版本選擇（預覽） ---------- */
   function renderPicker() {
+    $("#title").textContent = "2026 世界盃 問卷（預覽）";
+    $("#intro").textContent = "本問卷分兩個版本，正式使用時各有專屬連結。以下供內部預覽。";
     var desc = {
-      S1: "有領獎 ＋ 貨量成長（真效益模範）",
-      S2: "有領獎 ＋ 貨量未成長／下降（假參與診斷）",
-      S3: "有參與但未領獎（差臨門一腳）",
-      S4: "未參與 ＋ 貨量成長（自然量未接住）",
-      S5: "未參與 ＋ 貨量下降／持平（流失／沉睡）"
+      member: "會員版 · 了解會員、找下次活動方向、產生邀請連結",
+      friend: "好友版 · 被推薦的新朋友填寫、完成後導向註冊"
     };
     var grid = $("#pickerGrid");
-    validSegs.forEach(function (k) {
+    roles.forEach(function (k) {
       var b = document.createElement("button");
       b.type = "button"; b.className = "pcard";
-      b.innerHTML = '<span class="pcard__tag">' + k + '</span>' +
-        '<span><span class="pcard__t">' + k + ' 分群問卷</span>' +
-        '<span class="pcard__d">' + (desc[k] || "") + '</span></span>';
-      b.addEventListener("click", function () { location.search = "?seg=" + k; });
+      b.innerHTML = '<span class="pcard__tag">' + (k === "member" ? "會員" : "好友") + '</span>' +
+        '<span><span class="pcard__t">' + (k === "member" ? "會員版問卷" : "好友版問卷") + '</span>' +
+        '<span class="pcard__d">' + desc[k] + '</span></span>';
+      b.addEventListener("click", function () { location.search = "?role=" + k; });
       grid.appendChild(b);
     });
     $("#picker").hidden = false;
   }
 
-  /* ---------- 問卷渲染 ---------- */
-  function renderSurvey(segKey) {
-    var qs = SURVEY.segments[segKey].questions;
+  /* ---------- 渲染問卷 ---------- */
+  function renderSurvey(r) {
+    var qs = SURVEY[r].questions;
+    if (r === "friend" && refFrom) {
+      var banner = document.createElement("div");
+      banner.className = "refbanner";
+      banner.textContent = "🎁 您的邀請人推薦碼：" + refFrom + "　完成問卷並註冊投注，雙方皆可領獎勵";
+      $("#questions").appendChild(banner);
+    }
     var box = $("#questions");
     qs.forEach(function (q, i) { box.appendChild(buildQuestion(q, i + 1)); });
     $("#survey").hidden = false;
     updateProgress();
-    $("#survey").addEventListener("submit", function (e) { e.preventDefault(); submit(segKey, qs); });
+    $("#survey").addEventListener("submit", function (e) { e.preventDefault(); submit(r, qs); });
   }
 
   function buildQuestion(q, num) {
     var card = document.createElement("section");
-    card.className = "q";
-    card.dataset.qid = q.id; card.dataset.type = q.type;
-    var required = q.type !== "open";
-
-    var head = document.createElement("div");
-    head.className = "q__head";
+    card.className = "q"; card.dataset.qid = q.id; card.dataset.type = q.type;
+    var required = q.type !== "open" && q.type !== "refcode";
+    var head = document.createElement("div"); head.className = "q__head";
     head.innerHTML = '<span class="q__num">' + num + '</span>' +
       '<p class="q__text">' + esc(q.q) + (required ? '<span class="q__req">＊</span>' : '') + '</p>';
     card.appendChild(head);
@@ -68,18 +75,16 @@
     else if (q.type === "rank") body = buildRank(q);
     else if (q.type === "juster") body = buildJuster(q);
     else if (q.type === "conjoint") body = buildConjoint(q);
-    else if (q.type === "vw") body = buildVW(q);
+    else if (q.type === "refcode") body = buildRefcode(q);
     else body = buildOpen(q);
     card.appendChild(body);
     return card;
   }
 
-  /* 單選 / 複選 / 量表 */
   function buildChoice(q) {
-    var wrap = document.createElement("div");
-    wrap.className = "opts" + (q.type === "scale" ? " opts--scale" : "");
+    var wrap = document.createElement("div"); wrap.className = "opts";
     var multi = q.type === "multi";
-    q.options.forEach(function (opt, idx) {
+    q.options.forEach(function (opt) {
       var lab = document.createElement("label");
       lab.className = "opt" + (multi ? " opt--multi" : "");
       lab.innerHTML = '<input type="' + (multi ? "checkbox" : "radio") + '" name="' + q.id + '" value="' + esc(opt) + '">' +
@@ -103,7 +108,6 @@
     return wrap;
   }
 
-  /* 排序（MaxDiff） */
   function buildRank(q) {
     var wrap = document.createElement("div");
     var hint = document.createElement("p");
@@ -137,7 +141,6 @@
     return wrap;
   }
 
-  /* 忠誠意圖（Juster 0–10） */
   function buildJuster(q) {
     var wrap = document.createElement("div"); wrap.className = "juster";
     var ends = document.createElement("div"); ends.className = "juster__ends";
@@ -151,8 +154,7 @@
         b.addEventListener("click", function () {
           state[q.id] = val;
           Array.prototype.forEach.call(scale.children, function (c) { c.classList.remove("is-on"); });
-          b.classList.add("is-on");
-          clearMissing(q.id); updateProgress();
+          b.classList.add("is-on"); clearMissing(q.id); updateProgress();
         });
         scale.appendChild(b);
       })(n);
@@ -161,7 +163,6 @@
     return wrap;
   }
 
-  /* 取捨量化（Conjoint choice） */
   function buildConjoint(q) {
     var wrap = document.createElement("div"); wrap.className = "cj";
     var hint = document.createElement("p");
@@ -170,8 +171,7 @@
     var choice = {};
     q.tasks.forEach(function (task, ti) {
       var block = document.createElement("div"); block.className = "cj__task";
-      var t = document.createElement("p"); t.className = "cj__tlabel"; t.textContent = "第 " + (ti + 1) + " 組";
-      block.appendChild(t);
+      var t = document.createElement("p"); t.className = "cj__tlabel"; t.textContent = "第 " + (ti + 1) + " 組"; block.appendChild(t);
       var pair = document.createElement("div"); pair.className = "cj__pair";
       ["A", "B"].forEach(function (letter) {
         var levels = task[letter];
@@ -180,8 +180,7 @@
         var rows = q.attrs.map(function (a, i) {
           return '<span class="cj__attr"><span class="cj__k">' + esc(a) + '</span><span class="cj__v">' + esc(levels[i]) + '</span></span>';
         }).join("");
-        cardEl.innerHTML = '<span class="cj__badge">方案 ' + letter + '</span>' + rows +
-          '<span class="cj__pick">選這個</span>';
+        cardEl.innerHTML = '<span class="cj__badge">方案 ' + letter + '</span>' + rows + '<span class="cj__pick">選這個</span>';
         cardEl.addEventListener("click", function () {
           choice[task.id] = letter;
           Array.prototype.forEach.call(pair.children, function (c) { c.classList.remove("is-on"); });
@@ -191,36 +190,39 @@
         });
         pair.appendChild(cardEl);
       });
-      block.appendChild(pair);
-      wrap.appendChild(block);
+      block.appendChild(pair); wrap.appendChild(block);
     });
     return wrap;
   }
 
-  /* 門檻敏感度（Van Westendorp 矩陣） */
-  function buildVW(q) {
-    var wrap = document.createElement("div"); wrap.className = "vw";
-    var ans = {};
-    q.rows.forEach(function (rowLabel, ri) {
-      var row = document.createElement("div"); row.className = "vw__row";
-      var lab = document.createElement("p"); lab.className = "vw__label"; lab.textContent = rowLabel;
-      row.appendChild(lab);
-      var bands = document.createElement("div"); bands.className = "vw__bands";
-      q.bands.forEach(function (band) {
-        var b = document.createElement("button");
-        b.type = "button"; b.className = "vw__band"; b.textContent = band;
-        b.addEventListener("click", function () {
-          ans[ri] = band;
-          Array.prototype.forEach.call(bands.children, function (c) { c.classList.remove("is-on"); });
-          b.classList.add("is-on");
-          state[q.id] = Object.keys(ans).length === q.rows.length ? assign({}, ans) : undefined;
-          clearMissing(q.id); updateProgress();
-        });
-        bands.appendChild(b);
-      });
-      row.appendChild(bands);
-      wrap.appendChild(row);
+  /* 推薦碼 + 產生分享連結（會員版） */
+  function buildRefcode(q) {
+    var wrap = document.createElement("div"); wrap.className = "ref";
+    if (q.note) { var n = document.createElement("p"); n.className = "ref__note"; n.textContent = q.note; wrap.appendChild(n); }
+    var row = document.createElement("div"); row.className = "ref__row";
+    var input = document.createElement("input");
+    input.type = "text"; input.className = "ref__input"; input.placeholder = "輸入您的推薦碼"; input.maxLength = 40;
+    var gen = document.createElement("button");
+    gen.type = "button"; gen.className = "ref__btn"; gen.textContent = "產生邀請連結";
+    row.appendChild(input); row.appendChild(gen);
+    wrap.appendChild(row);
+
+    var out = document.createElement("div"); out.className = "ref__out"; out.hidden = true;
+    var linkEl = document.createElement("div"); linkEl.className = "ref__link";
+    var copyBtn = document.createElement("button"); copyBtn.type = "button"; copyBtn.className = "ref__copy"; copyBtn.textContent = "複製連結";
+    out.appendChild(linkEl); out.appendChild(copyBtn);
+    wrap.appendChild(out);
+
+    input.addEventListener("input", function () { state[q.id] = input.value.trim() || undefined; });
+    gen.addEventListener("click", function () {
+      var code = input.value.trim();
+      if (!code) { input.focus(); return; }
+      state[q.id] = code;
+      memberShareUrl = shareUrlFor(code);
+      linkEl.textContent = memberShareUrl;
+      out.hidden = false;
     });
+    copyBtn.addEventListener("click", function () { copy(memberShareUrl, copyBtn); });
     return wrap;
   }
 
@@ -232,8 +234,10 @@
   }
 
   /* ---------- 進度 ---------- */
-  function currentQs() { return (SURVEY.segments[seg] && SURVEY.segments[seg].questions) || []; }
-  function requiredIds() { return currentQs().filter(function (q) { return q.type !== "open"; }).map(function (q) { return q.id; }); }
+  function currentQs() { return (SURVEY[role] && SURVEY[role].questions) || []; }
+  function requiredIds() {
+    return currentQs().filter(function (q) { return q.type !== "open" && q.type !== "refcode"; }).map(function (q) { return q.id; });
+  }
   function isAnswered(id) {
     var v = state[id];
     if (v === undefined || v === null) return false;
@@ -249,8 +253,8 @@
   }
 
   /* ---------- 送出 ---------- */
-  function submit(segKey, qs) {
-    var missing = qs.filter(function (q) { return q.type !== "open" && !isAnswered(q.id); });
+  function submit(r, qs) {
+    var missing = qs.filter(function (q) { return q.type !== "open" && q.type !== "refcode" && !isAnswered(q.id); });
     if (missing.length) {
       markMissing(missing[0].id);
       setHint("尚有 " + missing.length + " 題必填未完成，已為您定位至第一題。", true);
@@ -258,25 +262,28 @@
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    var answers = qs.map(function (q) { return { qid: q.id, question: q.q, answer: serializeAnswer(q, state[q.id]) }; });
+    if (r === "friend" && refFrom) answers.unshift({ qid: "REF-FROM", question: "推薦人推薦碼(ref)", answer: refFrom });
+    if (r === "member") {
+      var mc = memberCode();
+      if (mc) answers.push({ qid: "MY-CODE", question: "會員自填推薦碼", answer: mc });
+    }
     var payload = {
-      submissionId: genId(), seg: segKey, ts: new Date().toISOString(), ua: navigator.userAgent,
-      answers: qs.map(function (q) { return { qid: q.id, question: q.q, answer: serializeAnswer(q, state[q.id]) }; })
+      submissionId: genId(), seg: r.toUpperCase(), ts: new Date().toISOString(), ua: navigator.userAgent, answers: answers
     };
-    var btn = $("#submitBtn");
-    btn.disabled = true; btn.textContent = "送出中…"; setHint("");
-    sendToSheet(payload, showDone);
+    var btn = $("#submitBtn"); btn.disabled = true; btn.textContent = "送出中…"; setHint("");
+    sendToSheet(payload, function () { showDone(r); });
+  }
+
+  function memberCode() {
+    var q = currentQs().filter(function (x) { return x.type === "refcode"; })[0];
+    return q ? (state[q.id] || "") : "";
   }
 
   function serializeAnswer(q, v) {
     if (v == null) return "";
     if (Array.isArray(v)) return v.join(" ｜ ");
-    if (q.type === "conjoint") {
-      return q.tasks.map(function (t, i) { return "第" + (i + 1) + "組=方案" + (v[t.id] || "-"); }).join(" ｜ ");
-    }
-    if (q.type === "vw") {
-      var marks = ["①", "②", "③", "④", "⑤", "⑥"];
-      return q.rows.map(function (_, i) { return marks[i] + "=" + (v[i] || "-"); }).join(" ｜ ");
-    }
+    if (q.type === "conjoint") return q.tasks.map(function (t, i) { return "第" + (i + 1) + "組=方案" + (v[t.id] || "-"); }).join(" ｜ ");
     return String(v);
   }
 
@@ -284,18 +291,53 @@
     var url = (CFG.ENDPOINT || "").trim();
     if (!url) { console.warn("[示範模式] 尚未設定 ENDPOINT，回答未寫入 Sheet：", payload); setTimeout(done, 500); return; }
     fetch(url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
-      .then(function () { done(); })
-      .catch(function () { console.warn("送出例外，但資料可能已寫入。"); done(); });
+      .then(function () { done(); }).catch(function () { console.warn("送出例外，但資料可能已寫入。"); done(); });
   }
 
-  function showDone() {
+  /* ---------- 完成畫面（含 CTA / 分享） ---------- */
+  function showDone(r) {
     $("#survey").hidden = true; $("#picker").hidden = true;
     $("#progressBar").style.width = "100%";
+    var action = $("#doneAction"); action.innerHTML = "";
+    if (r === "friend") {
+      var url = SURVEY.registerUrl + (refFrom ? "?ref=" + encodeURIComponent(refFrom) : "");
+      var a = document.createElement("a");
+      a.className = "cta"; a.href = url; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "立即註冊・領取新手體驗金 →";
+      action.appendChild(a);
+      var tip = document.createElement("p"); tip.className = "done__tip";
+      tip.textContent = "註冊並完成首存投注，您與邀請您的朋友都能獲得獎勵。";
+      action.appendChild(tip);
+    } else if (r === "member") {
+      var code = memberCode();
+      if (code) {
+        var box = document.createElement("div"); box.className = "sharebox";
+        var h = document.createElement("p"); h.className = "sharebox__h"; h.textContent = "您的專屬邀請連結";
+        var link = document.createElement("div"); link.className = "sharebox__link"; link.textContent = shareUrlFor(code);
+        var cp = document.createElement("button"); cp.type = "button"; cp.className = "cta"; cp.textContent = "複製邀請連結";
+        cp.addEventListener("click", function () { copy(shareUrlFor(code), cp); });
+        box.appendChild(h); box.appendChild(link); box.appendChild(cp);
+        action.appendChild(box);
+      }
+    }
     $("#done").hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ---------- 小工具 ---------- */
+  function shareUrlFor(code) {
+    return location.origin + location.pathname + "?role=" + (SURVEY.shareParamRole || "friend") + "&ref=" + encodeURIComponent(code);
+  }
+  function copy(text, btn) {
+    var old = btn.textContent;
+    function ok() { btn.textContent = "已複製 ✓"; setTimeout(function () { btn.textContent = old; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, function () { fallbackCopy(text); ok(); });
+    else { fallbackCopy(text); ok(); }
+  }
+  function fallbackCopy(text) {
+    var t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(t);
+  }
   function assign(t, s) { for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k)) t[k] = s[k]; return t; }
   function markMissing(id) { var el = document.querySelector('.q[data-qid="' + id + '"]'); if (el) el.classList.add("is-missing"); }
   function clearMissing(id) { var el = document.querySelector('.q[data-qid="' + id + '"]'); if (el) el.classList.remove("is-missing"); setHint(""); }

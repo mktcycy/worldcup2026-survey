@@ -162,6 +162,37 @@ body{
 .vw__band:hover{border-color:var(--sel-line)}
 .vw__band.is-on{background:var(--pitch-700); border-color:var(--pitch-700); color:#fff}
 
+/* 好友版 邀請人橫幅 */
+.refbanner{margin:0 0 14px; padding:12px 15px; border-radius:12px; font-size:14px; font-weight:500; line-height:1.55;
+  color:var(--pitch-800); background:linear-gradient(180deg,var(--gold-soft),#f4e8c8); border:1px solid var(--gold)}
+@media (prefers-color-scheme: dark){ .refbanner{color:#0d130f} }
+:root[data-theme="dark"] .refbanner{color:#0d130f}
+
+/* 推薦碼 + 分享 */
+.ref__note{margin:0 0 13px; font-size:13.5px; color:var(--ink-soft); line-height:1.7}
+.ref__row{display:flex; gap:9px; flex-wrap:wrap}
+.ref__input{flex:1 1 150px; min-width:0; padding:12px 14px; font:inherit; font-size:15.5px; color:var(--ink);
+  background:var(--paper); border:1.5px solid var(--line-strong); border-radius:11px}
+.ref__input:focus{outline:none; border-color:var(--sel-line)}
+.ref__btn{flex:none; cursor:pointer; border:none; font:inherit; font-weight:700; font-size:14.5px; color:#fff;
+  padding:12px 18px; border-radius:11px; background:linear-gradient(180deg,var(--gold),#b8912f)}
+.ref__out{margin-top:12px}
+.ref__link,.sharebox__link{word-break:break-all; font-family:"Roboto Mono",monospace; font-size:12.5px; line-height:1.6;
+  padding:11px 13px; background:var(--sel-bg); border:1px dashed var(--sel-line); border-radius:10px; color:var(--sel-line)}
+.ref__copy{margin-top:9px; cursor:pointer; border:none; font:inherit; font-weight:700; font-size:14px; color:#fff;
+  padding:10px 16px; border-radius:10px; background:var(--pitch-700)}
+
+/* 完成畫面：CTA / 分享 */
+.done__action{margin-top:22px}
+.cta{display:inline-block; cursor:pointer; border:none; font:inherit; font-weight:700; font-size:16.5px; color:#fff; letter-spacing:.02em;
+  padding:15px 26px; border-radius:13px; text-decoration:none;
+  background:linear-gradient(180deg,var(--gold),#b8912f); box-shadow:0 10px 26px -12px rgba(201,162,74,.8)}
+.cta:hover{filter:brightness(1.05)}
+.done__tip{margin:14px auto 0; max-width:40ch; font-size:13px; color:var(--ink-soft)}
+.sharebox{max-width:440px; margin:0 auto; text-align:left; background:var(--paper); border:1px solid var(--line); border-radius:13px; padding:16px}
+.sharebox__h{margin:0 0 9px; font-size:14px; font-weight:700; text-align:center}
+.sharebox .cta{display:block; width:100%; text-align:center; margin-top:12px; font-size:15.5px}
+
 /* 開放題 */
 .q textarea{width:100%; min-height:92px; resize:vertical; padding:12px 14px; font:inherit; font-size:15.5px; line-height:1.6;
   color:var(--ink); background:var(--paper); border:1.5px solid var(--line-strong); border-radius:11px}
