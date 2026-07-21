@@ -7,47 +7,64 @@
 
   var params = new URLSearchParams(location.search);
   var role = (params.get("role") || "").toLowerCase().trim();
+  var seg = (params.get("seg") || "").toUpperCase().trim();
   var refFrom = (params.get("ref") || "").trim();
-  var roles = ["member", "friend"];
   var memberShareUrl = ""; // 會員產生的專屬邀請連結
   var state = {};
 
+  var memberSegs = Object.keys((SURVEY.member && SURVEY.member.segments) || {});
+  if (seg && !role) role = "member"; // ?seg= 簡寫視為會員版
+
+  var activeRole = null, activeSeg = null, activeQs = null;
+
   $("#eyebrow").textContent = CFG.brandEyebrow || $("#eyebrow").textContent;
 
-  if (roles.indexOf(role) === -1) { renderPicker(); }
-  else {
-    var S = SURVEY[role];
-    $("#title").textContent = role === "member" ? "了解您，也邀您一起玩" : "2 分鐘體育小問卷";
-    $("#intro").textContent = S.intro || "";
-    $("#doneText").textContent = S.outro || "感謝您的填答。";
-    renderSurvey(role);
+  if (role === "friend") {
+    activeRole = "friend"; activeQs = SURVEY.friend.questions;
+    $("#title").textContent = "2 分鐘體育小問卷";
+    $("#intro").textContent = SURVEY.friend.intro || "";
+    $("#doneText").textContent = SURVEY.friend.outro || "感謝您的填答。";
+    renderSurvey();
+  } else if (role === "member" && memberSegs.indexOf(seg) !== -1) {
+    activeRole = "member"; activeSeg = seg; activeQs = SURVEY.member.segments[seg].questions;
+    $("#title").textContent = "了解您，也邀您一起玩";
+    $("#intro").textContent = SURVEY.member.intro || "";
+    $("#doneText").textContent = SURVEY.member.outro || "感謝您的填答。";
+    renderSurvey();
+  } else {
+    renderPicker();
   }
 
   /* ---------- 版本選擇（預覽） ---------- */
   function renderPicker() {
     $("#title").textContent = "2026 世界盃 問卷（預覽）";
-    $("#intro").textContent = "本問卷分兩個版本，正式使用時各有專屬連結。以下供內部預覽。";
-    var desc = {
-      member: "會員版 · 了解會員、找下次活動方向、產生邀請連結",
-      friend: "好友版 · 被推薦的新朋友填寫、完成後導向註冊"
+    $("#intro").textContent = "會員版依分群各有專屬題目；好友版供被推薦的新朋友填寫。以下供內部預覽。";
+    var segDesc = {
+      S1: "有領獎＋貨量成長（真效益模範）", S2: "有領獎＋貨量未成長/下降（薅羊毛）",
+      S3: "有參與但未領獎（差臨門一腳）", S4: "未參與＋貨量成長（自然量未接住）",
+      S5: "未參與＋貨量下降/持平（流失/沉睡）"
     };
     var grid = $("#pickerGrid");
-    roles.forEach(function (k) {
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "pcard";
-      b.innerHTML = '<span class="pcard__tag">' + (k === "member" ? "會員" : "好友") + '</span>' +
-        '<span><span class="pcard__t">' + (k === "member" ? "會員版問卷" : "好友版問卷") + '</span>' +
-        '<span class="pcard__d">' + desc[k] + '</span></span>';
-      b.addEventListener("click", function () { location.search = "?role=" + k; });
-      grid.appendChild(b);
+    memberSegs.forEach(function (k) {
+      grid.appendChild(pcard("會員 " + k, "會員版 · " + (segDesc[k] || ""), "?role=member&seg=" + k));
     });
+    grid.appendChild(pcard("好友", "好友版 · 被推薦的新朋友填寫、完成後導向註冊", "?role=friend"));
     $("#picker").hidden = false;
+  }
+  function pcard(tag, desc, search) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "pcard";
+    b.innerHTML = '<span class="pcard__tag">' + esc(tag) + '</span>' +
+      '<span><span class="pcard__t">' + esc(tag) + ' 問卷</span>' +
+      '<span class="pcard__d">' + esc(desc) + '</span></span>';
+    b.addEventListener("click", function () { location.search = search; });
+    return b;
   }
 
   /* ---------- 渲染問卷 ---------- */
-  function renderSurvey(r) {
-    var qs = SURVEY[r].questions;
-    if (r === "friend" && refFrom) {
+  function renderSurvey() {
+    var qs = activeQs;
+    if (activeRole === "friend" && refFrom) {
       var banner = document.createElement("div");
       banner.className = "refbanner";
       banner.textContent = "🎁 您的邀請人推薦碼：" + refFrom + "　完成問卷並註冊投注，雙方皆可領獎勵";
@@ -57,13 +74,19 @@
     qs.forEach(function (q, i) { box.appendChild(buildQuestion(q, i + 1)); });
     $("#survey").hidden = false;
     updateProgress();
-    $("#survey").addEventListener("submit", function (e) { e.preventDefault(); submit(r, qs); });
+    $("#survey").addEventListener("submit", function (e) { e.preventDefault(); submit(); });
+  }
+
+  function isRequired(q) {
+    if (q.type === "refcode") return false;
+    if (q.type === "open") return q.required === true;
+    return true;
   }
 
   function buildQuestion(q, num) {
     var card = document.createElement("section");
     card.className = "q"; card.dataset.qid = q.id; card.dataset.type = q.type;
-    var required = q.type !== "open" && q.type !== "refcode";
+    var required = isRequired(q);
     var head = document.createElement("div"); head.className = "q__head";
     head.innerHTML = '<span class="q__num">' + num + '</span>' +
       '<p class="q__text">' + esc(q.q) + (required ? '<span class="q__req">＊</span>' : '') + '</p>';
@@ -233,9 +256,9 @@
   }
 
   /* ---------- 進度 ---------- */
-  function currentQs() { return (SURVEY[role] && SURVEY[role].questions) || []; }
+  function currentQs() { return activeQs || []; }
   function requiredIds() {
-    return currentQs().filter(function (q) { return q.type !== "open" && q.type !== "refcode"; }).map(function (q) { return q.id; });
+    return currentQs().filter(isRequired).map(function (q) { return q.id; });
   }
   function isAnswered(id) {
     var v = state[id];
@@ -252,8 +275,9 @@
   }
 
   /* ---------- 送出 ---------- */
-  function submit(r, qs) {
-    var missing = qs.filter(function (q) { return q.type !== "open" && q.type !== "refcode" && !isAnswered(q.id); });
+  function submit() {
+    var qs = activeQs;
+    var missing = qs.filter(function (q) { return isRequired(q) && !isAnswered(q.id); });
     if (missing.length) {
       markMissing(missing[0].id);
       setHint("尚有 " + missing.length + " 題必填未完成，已為您定位至第一題。", true);
@@ -262,16 +286,17 @@
       return;
     }
     var answers = qs.map(function (q) { return { qid: q.id, question: q.q, answer: serializeAnswer(q, state[q.id]) }; });
-    if (r === "friend" && refFrom) answers.unshift({ qid: "REF-FROM", question: "推薦人推薦碼(ref)", answer: refFrom });
-    if (r === "member") {
+    if (activeRole === "friend" && refFrom) answers.unshift({ qid: "REF-FROM", question: "推薦人推薦碼(ref)", answer: refFrom });
+    if (activeRole === "member") {
       var mc = memberCode();
       if (mc) answers.push({ qid: "MY-CODE", question: "會員自填推薦碼", answer: mc });
     }
+    var segTag = activeRole === "friend" ? "FRIEND" : ("會員" + (activeSeg || ""));
     var payload = {
-      submissionId: genId(), seg: r.toUpperCase(), ts: new Date().toISOString(), ua: navigator.userAgent, answers: answers
+      submissionId: genId(), seg: segTag, ts: new Date().toISOString(), ua: navigator.userAgent, answers: answers
     };
     var btn = $("#submitBtn"); btn.disabled = true; btn.textContent = "送出中…"; setHint("");
-    sendToSheet(payload, function () { showDone(r); });
+    sendToSheet(payload, function () { showDone(activeRole); });
   }
 
   function memberCode() {
