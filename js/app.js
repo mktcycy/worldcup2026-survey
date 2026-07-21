@@ -250,7 +250,7 @@
 
   function buildOpen(q) {
     var ta = document.createElement("textarea");
-    ta.placeholder = "請輸入您的想法（選填）"; ta.maxLength = 600;
+    ta.placeholder = isRequired(q) ? "請在此輸入…" : "請輸入您的想法（選填）"; ta.maxLength = 600;
     ta.addEventListener("input", function () { state[q.id] = ta.value.trim() || undefined; updateProgress(); });
     return ta;
   }
