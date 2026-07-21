@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>2026 世界盃 會員問卷</title>
+  <meta name="description" content="2026 世界盃活動會員意見調查 — 您的每一則回饋，都是我們調整下次活動的依據。" />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="progress" id="progress" aria-hidden="true"><div class="progress__bar" id="progressBar"></div></div>
+
+  <header class="hero">
+    <div class="hero__pitch" aria-hidden="true">
+      <svg viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
+        <g fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="8" y="8" width="384" height="184" rx="2" />
+          <line x1="200" y1="8" x2="200" y2="192" />
+          <circle cx="200" cy="100" r="34" />
+          <circle cx="200" cy="100" r="2.4" fill="currentColor" stroke="none" />
+          <rect x="8" y="58" width="46" height="84" />
+          <rect x="346" y="58" width="46" height="84" />
+        </g>
+      </svg>
+    </div>
+    <div class="hero__inner">
+      <p class="hero__eyebrow" id="eyebrow">2026 世界盃 ・ 會員問卷調查</p>
+      <h1 class="hero__title" id="title">您的回饋，決定下一場精彩</h1>
+      <p class="hero__intro" id="intro"></p>
+      <div class="hero__meta">
+        <span class="chip">🕑 約 2–3 分鐘</span>
+        <span class="chip">🔒 全程匿名</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="main">
+    <!-- 分群預覽選擇器（僅在無 ?seg 參數時顯示） -->
+    <section class="picker" id="picker" hidden>
+      <h2 class="picker__h">問卷預覽 · 請選擇要檢視的受眾分群</h2>
+      <p class="picker__note">正式發送時，每個分群的會員會收到專屬連結（例如 <code>?seg=S1</code>），直接看到對應題目。以下供內部預覽。</p>
+      <div class="picker__grid" id="pickerGrid"></div>
+    </section>
+
+    <form class="survey" id="survey" hidden novalidate>
+      <div id="questions"></div>
+      <div class="submitRow">
+        <button type="submit" class="btn" id="submitBtn">送出問卷</button>
+        <p class="submitRow__hint" id="submitHint"></p>
+      </div>
+    </form>
+
+    <!-- 完成畫面 -->
+    <section class="done" id="done" hidden>
+      <div class="done__mark" aria-hidden="true">
+        <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="none"/><path fill="none" d="M14 27l8 8 16-16"/></svg>
+      </div>
+      <h2 class="done__h">已收到您的回饋</h2>
+      <p class="done__p" id="doneText"></p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>本問卷僅供活動體驗優化之用 · 感謝您的參與</p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
